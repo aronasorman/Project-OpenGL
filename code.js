@@ -1,9 +1,6 @@
-
-
-
-
     var mvMatrix = mat4.create();
     var pMatrix = mat4.create();
+    var viewMatrix = mat4.create();
     
     var xMin = -100.0;
     var xMax = 100.0;
@@ -16,33 +13,7 @@
     	return deg * (Math.PI/180);
     }
     
-    function createBuilding() {}
-
-    
-    function setMatrixUniforms() {
-        gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix);
-        gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
-    }
-    
-    function perspective(l, r, t, b, n, f, d) { // follow the call type of mat4.perspective
-    	d[0] = 2*n/(r-l)	; d[4] = 0			; d[8] = (r+l)/(r-l)	; d[12] = 0				;
-    	d[1] = 0			; d[5] = 2*n/(t-b)	; d[9] = (t+b)/(t-b)	; d[13] = 0				;
-    	d[2] = 0			; d[6] = 0			; d[10] = (n+f)/(n-f)	; d[14] = (2*f*n)/(n-f)	;
-    	d[3] = 0			; d[7] = 0			; d[11] = -1			; d[15] = 0				;
-    	
-    }
-    
-    // mat4.translate implementation is buggy, x isn't translated
-    function translate(mat, x, y, z) { // follow the call type of mat4.perspective
-    	var d = mat4.create();
-    	d[0] = 1			; d[4] = 0			; d[8] = 0				; d[12] = x				;
-    	d[1] = 0			; d[5] = 1			; d[9] = 0				; d[13] = y				;
-    	d[2] = 0			; d[6] = 0			; d[10] = 1				; d[14] = z				;
-    	d[3] = 0			; d[7] = 0			; d[11] = 0    			; d[15] = 1				;
-    	mat4.multiply(d, mat, mat);
-    	// note: try setting d[11] to -1 and see some weird shit :))
-    }
-    
+     
     var mvMatrixStack = [];
     var pMatrixStack = [];
     
@@ -57,77 +28,88 @@
     	mvMatrix = mvMatrixStack.pop();
     }
     
-    function drawBuilding(angle) {
-    
-        var wall_vertices = [50, 0, 4, 1,
-        					 50, 50, 4, 1,
-        					 -50, 50, 4, 1,
-        					 -50, 0, 4, 1,
-        					 50, 0, 4, 1
-        					 ]
-        
-        // prepare buffers and shove wall vertices to said buffer
-        var wallBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, wallBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(wall_vertices), gl.STATIC_DRAW);
-        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
-
-        pushMVMatrix(); // save the mvMatrix before we modify
-        
-        //TRT-1
-        translate(mvMatrix, 0, 0, 0); // general location of the walls
-        
-        pushMVMatrix();
-        
-        // draw the walls
-        translate(mvMatrix, -3.5, 0, 0); // the rotation isn't exactly in the middle, so we adjust it
-        mat4.rotateY(mvMatrix, deg2rad(90));
-        translate(mvMatrix, 0, 0, -25); // move wall forward so bottom half doesn't stick out
-        
-        pushMVMatrix();
-        
-        // draw the left wall
-        translate(mvMatrix, -50, 0, 0);
-        setMatrixUniforms();
-        gl.drawArrays(gl.LINE_STRIP, 0, 5);
-        
-        popMVMatrix();
-        
-        // draw the right wall
-        translate(mvMatrix, 50, 0, 0);
-        setMatrixUniforms();
-        gl.drawArrays(gl.LINE_STRIP, 0, 5);
-        
-        popMVMatrix();
-        
-        // draw floor
-        setMatrixUniforms();
-        gl.drawArrays(gl.LINE_STRIP, 0, 5);
-        
-        // draw the ceiling
-        
-        
-        popMVMatrix();
-        
-        
-      
+    // initializes all the properties of a node not specific to a certain type
+    function nodeBoilerplate() {
+    	var node = {}
+    	node.children = []
+    	return node
     }
     
+    
+    function buildingNode(length, width, height) {
+    	var node = nodeBoilerplate()
+    	node.vertices = [-1.0, -1.0,  1.0, 1.0,
+    					1.0, -1.0,  1.0, 1.0,
+    					-1.0,  1.0,  1.0, 1.0,
+    					1.0,  1.0,  1.0, 1.0,
+    					-1.0, -1.0, -1.0, 1.0,
+    					1.0, -1.0, -1.0, 1.0,
+    					-1.0,  1.0, -1.0, 1.0,
+    					1.0,  1.0, -1.0, 1.0
+    					]
+    	node.itemSize = 4
+    	node.draw = function() {
+    					pushMVMatrix();
+    					mat4.scale(mvMatrix, [width, height, length])
+    					var buildingArrayBuffer = gl.createBuffer();
+    					var buildingIndexBuffer = gl.createBuffer();
+    					gl.bindBuffer(gl.ARRAY_BUFFER, buildingArrayBuffer);
+    					gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.vertices), gl.STATIC_DRAW);
+    					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
+    					
+    					var indices = [0, 1, 2, 3, 7, 1, 5, 4, 7, 6, 2, 4, 0, 1];
+    					gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buildingBuffer);
+    					gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+    					setMatrixUniforms();
+    					gl.drawElements(gl.TRIANGLE_STRIP, 14, gl.UNSIGNED_SHORT, 0);
+    					popMVMatrix();
+    		}
+    	return node;
+    }
+    
+    function initBuffers() {
+    	buildingBuffer = gl.createBuffer();
+    }
+
+    
+    function setMatrixUniforms() {
+        gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix);
+        gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
+        gl.uniformMatrix4fv(shaderProgram.viewMatrixUniform, false, viewMatrix);
+    }
+    
+    function perspective(l, r, t, b, n, f, d) { // follow the call type of mat4.perspective
+    	d[0] = 2*n/(r-l)	; d[4] = 0			; d[8] = (r+l)/(r-l)	; d[12] = 0				;
+    	d[1] = 0			; d[5] = 2*n/(t-b)	; d[9] = (t+b)/(t-b)	; d[13] = 0				;
+    	d[2] = 0			; d[6] = 0			; d[10] = (n+f)/(n-f)	; d[14] = (2*f*n)/(n-f)	;
+    	d[3] = 0			; d[7] = 0			; d[11] = -1			; d[15] = 0				;
+    	
+    }
+    
+    // mat4.translate implementation is buggy, x isn't translated. So we implement our own, based on slides
+    function translate(mat, x, y, z) { // follow the call type of mat4.perspective
+    	var d = mat4.create();
+    	d[0] = 1			; d[4] = 0			; d[8] = 0				; d[12] = x				;
+    	d[1] = 0			; d[5] = 1			; d[9] = 0				; d[13] = y				;
+    	d[2] = 0			; d[6] = 0			; d[10] = 1				; d[14] = z				;
+    	d[3] = 0			; d[7] = 0			; d[11] = 0    			; d[15] = 1				;
+    	mat4.multiply(d, mat, mat);
+    	// note: try setting d[11] to -1 and see some weird shit :))
+    }
+   
     function drawScene(angle) {
         gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         mat4.ortho(xMin, xMax, yMin, yMax, zMin, zMax, pMatrix);
-        //mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.01, 100.0, pMatrix);
-        //mat4.frustum(xMin, xMax, yMin, yMax, 3.5, 30, pMatrix);
-        
-        
-		//
-		
-
+        //mat4.frustum(xMin, xMax, yMin, yMax * 2, 0.5, 100, pMatrix);
+        mat4.identity(viewMatrix);
+        //mat4.lookAt([ Math.cos(deg2rad(angle)), Math.cos(deg2rad(angle)) , Math.cos(deg2rad(angle))], [0, 3, 1], [0, 1, 0], viewMatrix);
         mat4.identity(mvMatrix);
-        //mat4.rotate(mvMatrix, deg2rad(angle), [1, 0, 0]);
-        drawBuilding(angle);
+		
+		
+        var b = buildingNode(10, 10, 50);
+        b.draw();
         
     }
     
@@ -142,6 +124,7 @@
         var canvas = document.getElementById("lesson01-canvas");
         initGL(canvas);
         initShaders();
+        initBuffers();
 
         gl.clearColor(1.0, 1.0, 1.0, 1.0);
         gl.enable(gl.DEPTH_TEST);
