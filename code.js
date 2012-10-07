@@ -31,7 +31,37 @@
     // initializes all the properties of a node not specific to a certain type
     function nodeBoilerplate() {
     	var node = {}
+    	node.mMatrix = mat4.create(); // the matrix that gets applied to this node and all its children
+    	mat4.identity(node.mMatrix); // it does nothing, by default
     	node.children = []
+    	node.draw = function() { // default implementation of draw() just draws all children. TODO: create abstraction such that no need for manual specifying of pushMVMatrix() and popMVMatrix()
+    					pushMVMatrix();
+    					mat4.multiply(mvMatrix, this.mMatrix, mvMatrix);
+    					for (i = 0; i < this.children.length; i++) {
+    						node.children[i].draw()
+    					}
+    					popMVMatrix();
+    			}
+    	return node
+    }
+    
+    // a block is a collection of buildings
+    // V1: the generation of buildins is random, they just follow the total area
+    // specified as parameters of this function. Actually for this version
+    // it's the height of the building that will be randomized, 
+    function blockNode(length, width) {
+    	var node = nodeBoilerplate()
+    	var NUM_BUILDINGS = 6
+    	var BUILDING_MAX_HEIGHT = 100
+    	// for now, divide the length and width equally among all buildings
+    	var building_length = length / NUM_BUILDINGS;
+    	// same for width
+    	var building_width = width;
+    	for (i =  -(length / 2); i < length  / 2; i += building_length) {
+    		var building = buildingNode(building_length, building_width, Math.random() * BUILDING_MAX_HEIGHT);
+    		translate(building.mMatrix, i, 0, 0);
+    		node.children.push(building)
+    	}
     	return node
     }
     
@@ -50,7 +80,9 @@
     	node.itemSize = 4
     	node.draw = function() {
     					pushMVMatrix();
+    					mat4.multiply(mvMatrix, this.mMatrix, mvMatrix);
     					mat4.scale(mvMatrix, [width, height, length])
+    					translate(mvMatrix, 0, height, 0) // raise building to above x axis
     					var buildingArrayBuffer = gl.createBuffer();
     					var buildingIndexBuffer = gl.createBuffer();
     					gl.bindBuffer(gl.ARRAY_BUFFER, buildingArrayBuffer);
@@ -97,6 +129,7 @@
     	// note: try setting d[11] to -1 and see some weird shit :))
     }
    
+   	var block;
     function drawScene(angle) {
         gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -108,8 +141,8 @@
         mat4.identity(mvMatrix);
 		
 		
-        var b = buildingNode(10, 10, 50);
-        b.draw();
+        block = block || blockNode(10, 10, 50);
+        block.draw();
         
     }
     
