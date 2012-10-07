@@ -1,4 +1,7 @@
 
+
+
+
     var mvMatrix = mat4.create();
     var pMatrix = mat4.create();
     
@@ -8,120 +11,1215 @@
     var yMax = 100.0;
     var zMin = -100.0;
     var zMax = 100.0;
-
-    // returns a node object ready to be drawn to the screen with drawNode()
-    //
-    // location is of the form [X, Y, Z] where X, Y Z are the offsets from the 
-    // parent of the object (usually the absolute origin) if you don't really care
-    // radius is the radius of the circle which represents the node. Duh.
-    // color is the color of the circle which represents the node. Should be a javascript array.
-    function createNode(location, radius, color) {
-    	var translationMatrix = mat4.create();
-    	mat4.translate(translationMatrix, location);
-    	var node  = {};
-    	node.modelMatrix = translationMatrix; // translation is all we need to set the location of this badass
-    	node.type = "node"; // Maybe it's not a node?
-    	node.drawType = gl.TRIANGLE_FAN;
-    	
-    	vertices = [0, 0, 0,
-    				Math.cos(1 * Math.PI / 3), Math.sin(1 * Math.PI / 3), 0,
-    				Math.cos(2 * Math.PI / 3), Math.sin(2 * Math.PI / 3), 0,
-       				Math.cos(3 * Math.PI / 3), Math.sin(3 * Math.PI / 3), 0,
-    				Math.cos(4 * Math.PI / 3), Math.sin(4 * Math.PI / 3), 0,
-    				Math.cos(5 * Math.PI / 3), Math.sin(5 * Math.PI / 3), 0,
-    				Math.cos(6 * Math.PI / 3), Math.sin(6 * Math.PI / 3), 0,		
-    				Math.cos(1 * Math.PI / 3), Math.sin(1 * Math.PI / 3), 0
-
-    	];
-    	
-    	for (i = 0; i < vertices.length; i++) { // apply scaling
-    		vertices[i] = radius * vertices[i];
-    	}
-    	
-    	
-    	node.vertices  = new Float32Array(vertices);
-    	node.itemSize = 3;
-    	node.buffer = gl.createBuffer();
-    	node.numItems = vertices.length / node.itemSize;
-    	return node;
+    
+    function deg2rad(deg) {
+    	return deg * (Math.PI/180);
     }
     
-    function drawNode(node) {
-    
-        nodeBuffer = node.buffer;
-        gl.bindBuffer(gl.ARRAY_BUFFER, nodeBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, node.vertices, gl.STATIC_DRAW);
-        setMatrixUniforms();
-        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, node.itemSize, gl.FLOAT, false, 0, 0);
-        //mat4.multiply(node.modelMatrix, mvMatrix, mvMatrix);
-        setMatrixUniforms();
-        gl.drawArrays(gl.TRIANGLE_FAN, 0, node.numItems);
-        // drawNode(node);
-        
-        
-    }
-    
-    
-    // all the code below is just boilerplate, but we keep it here since we're gonna keep changing it as the code evolves.
-    var triangleVertexPositionBuffer;
-    var squareVertexPositionBuffer;
-    function initBuffers() {
-        triangleVertexPositionBuffer = gl.createBuffer();
-        squareVertexPositionBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer);
-        var vertices = [
-             0.0,  1.0,  0.0,
-            -1.0, -1.0,  0.0,
-             1.0, -1.0,  0.0
-        ];
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-        triangleVertexPositionBuffer.itemSize = 3;
-        triangleVertexPositionBuffer.numItems = 3;
+    function createBuilding() {}
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
-        vertices = [
-             1.0,  1.0,  0.0,
-            -1.0,  1.0,  0.0,
-             1.0, -1.0,  0.0,
-            -1.0, -1.0,  0.0
-        ];
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-        squareVertexPositionBuffer.itemSize = 3;
-        squareVertexPositionBuffer.numItems = 4;
-    }
-    
     
     function setMatrixUniforms() {
         gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix);
         gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
     }
     
+    function perspective(l, r, t, b, n, f, d) { // follow the call type of mat4.perspective
+    	d[0] = 2*n/(r-l)	; d[4] = 0			; d[8] = (r+l)/(r-l)	; d[12] = 0				;
+    	d[1] = 0			; d[5] = 2*n/(t-b)	; d[9] = (t+b)/(t-b)	; d[13] = 0				;
+    	d[2] = 0			; d[6] = 0			; d[10] = (n+f)/(n-f)	; d[14] = (2*f*n)/(n-f)	;
+    	d[3] = 0			; d[7] = 0			; d[11] = -1			; d[15] = 0				;
+    	
+    }
+    
+    // mat4.translate implementation is buggy, x isn't translated
+    function translate(mat, x, y, z) { // follow the call type of mat4.perspective
+    	var d = mat4.create();
+    	d[0] = 1			; d[4] = 0			; d[8] = 0				; d[12] = x				;
+    	d[1] = 0			; d[5] = 1			; d[9] = 0				; d[13] = y				;
+    	d[2] = 0			; d[6] = 0			; d[10] = 1				; d[14] = z				;
+    	d[3] = 0			; d[7] = 0			; d[11] = 0    			; d[15] = 1				;
+    	mat4.multiply(d, mat, mat);
+    	// note: try setting d[11] to -1 and see some weird shit :))
+    }
+    
+    var mvMatrixStack = [];
+    var pMatrixStack = [];
+    
+    // store the current mvmatrix to the stack
+    function pushMVMatrix() {
+    	var mvMatrixCopy = mat4.create();
+    	mat4.set(mvMatrix, mvMatrixCopy);
+    	mvMatrixStack.push(mvMatrixCopy);
+    }
+    
+    function popMVMatrix() {
+    	mvMatrix = mvMatrixStack.pop();
+    }
+    
+    function drawBuilding(angle) {
+    
+        var wall_vertices = [50, 0, 4, 1,
+        					 50, 50, 4, 1,
+        					 -50, 50, 4, 1,
+        					 -50, 0, 4, 1,
+        					 50, 0, 4, 1
+        					 ]
+        
+        // prepare buffers and shove wall vertices to said buffer
+        var wallBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, wallBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(wall_vertices), gl.STATIC_DRAW);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
 
-    function drawScene() {
+        pushMVMatrix(); // save the mvMatrix before we modify
+        
+        //TRT-1
+        translate(mvMatrix, 0, 0, 0); // general location of the walls
+        
+        pushMVMatrix();
+        
+        // draw the walls
+        translate(mvMatrix, -3.5, 0, 0); // the rotation isn't exactly in the middle, so we adjust it
+        mat4.rotateY(mvMatrix, deg2rad(90));
+        translate(mvMatrix, 0, 0, -25); // move wall forward so bottom half doesn't stick out
+        
+        pushMVMatrix();
+        
+        // draw the left wall
+        translate(mvMatrix, -50, 0, 0);
+        setMatrixUniforms();
+        gl.drawArrays(gl.LINE_STRIP, 0, 5);
+        
+        popMVMatrix();
+        
+        // draw the right wall
+        translate(mvMatrix, 50, 0, 0);
+        setMatrixUniforms();
+        gl.drawArrays(gl.LINE_STRIP, 0, 5);
+        
+        popMVMatrix();
+        
+        // draw floor
+        setMatrixUniforms();
+        gl.drawArrays(gl.LINE_STRIP, 0, 5);
+        
+        // draw the ceiling
+        
+        
+        popMVMatrix();
+        
+        
+      
+    }
+    
+    function drawScene(angle) {
         gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         mat4.ortho(xMin, xMax, yMin, yMax, zMin, zMax, pMatrix);
+        //mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.01, 100.0, pMatrix);
+        //mat4.frustum(xMin, xMax, yMin, yMax, 3.5, 30, pMatrix);
+        
+        
+		//
+		
 
         mat4.identity(mvMatrix);
-        mat4.scale([10.0, 10.0, 0], mvMatrix);
+        //mat4.rotate(mvMatrix, deg2rad(angle), [1, 0, 0]);
+        drawBuilding(angle);
         
-        mat4.translate([0.0, 33.0, 0.0], mvMatrix);
-
-		var node = createNode([22.0, 3.0, 0.0], 6, 0);
-		drawNode(node);
+    }
+    
+    var angle = 0;
+    function render() {
+    	requestAnimFrame(render);
+    	drawScene(angle);
+    	angle += 1;
     }
 
     function webGLStart() {
         var canvas = document.getElementById("lesson01-canvas");
         initGL(canvas);
         initShaders();
-        initBuffers();
 
         gl.clearColor(1.0, 1.0, 1.0, 1.0);
         gl.enable(gl.DEPTH_TEST);
-
-        drawScene();
+		
+		render();
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
