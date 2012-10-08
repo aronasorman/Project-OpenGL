@@ -2,6 +2,10 @@
     var pMatrix = mat4.create();
     var viewMatrix = mat4.create();
     
+    var buildingArrayBuffer;
+    var buildingIndexBuffer;
+    var buildingTexCoordBuffer;
+    
     var xMin = -100.0;
     var xMax = 100.0;
     var yMin = -100.0;
@@ -68,39 +72,145 @@
     
     function buildingNode(length, width, height) {
     	var node = nodeBoilerplate()
-    	node.vertices = [-1.0, -1.0,  1.0, 1.0,
-    					1.0, -1.0,  1.0, 1.0,
-    					-1.0,  1.0,  1.0, 1.0,
-    					1.0,  1.0,  1.0, 1.0,
-    					-1.0, -1.0, -1.0, 1.0,
-    					1.0, -1.0, -1.0, 1.0,
-    					-1.0,  1.0, -1.0, 1.0,
-    					1.0,  1.0, -1.0, 1.0
-    					]
-    	node.itemSize = 4
     	node.draw = function() {
     					pushMVMatrix();
     					mat4.multiply(mvMatrix, this.mMatrix, mvMatrix);
     					mat4.scale(mvMatrix, [width, height, length])
     					translate(mvMatrix, 0, height, 0) // raise building to above x axis
-    					var buildingArrayBuffer = gl.createBuffer();
-    					var buildingIndexBuffer = gl.createBuffer();
-    					gl.bindBuffer(gl.ARRAY_BUFFER, buildingArrayBuffer);
-    					gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.vertices), gl.STATIC_DRAW);
-    					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
     					
-    					var indices = [0, 1, 2, 3, 7, 1, 5, 4, 7, 6, 2, 4, 0, 1];
-    					gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buildingBuffer);
-    					gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+    					gl.bindBuffer(gl.ARRAY_BUFFER, buildingArrayBuffer);
+    					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, buildingArrayBuffer.itemSize, gl.FLOAT, false, 0, 0);
+    					
+    					gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buildingIndexBuffer);
     					setMatrixUniforms();
-    					gl.drawElements(gl.TRIANGLE_STRIP, 14, gl.UNSIGNED_SHORT, 0);
+    					gl.drawElements(gl.TRIANGLE_STRIP, buildingIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
     					popMVMatrix();
     		}
     	return node;
     }
     
     function initBuffers() {
-    	buildingBuffer = gl.createBuffer();
+    	buildingArrayBuffer = gl.createBuffer();
+    	buildingTexCoordBuffer = gl.createBuffer();
+    	buildingIndexBuffer = gl.createBuffer();
+    	// the following vertices are copy pasted from: http://learningwebgl.com/lessons/lesson05/index.html
+		// since computing the vertices in my head is such a drag
+    	building_vertices = [
+            // Front face
+            -1.0, -1.0,  1.0,
+             1.0, -1.0,  1.0,
+             1.0,  1.0,  1.0,
+            -1.0,  1.0,  1.0,
+
+            // Back face
+            -1.0, -1.0, -1.0,
+            -1.0,  1.0, -1.0,
+             1.0,  1.0, -1.0,
+             1.0, -1.0, -1.0,
+
+            // Top face
+            -1.0,  1.0, -1.0,
+            -1.0,  1.0,  1.0,
+             1.0,  1.0,  1.0,
+             1.0,  1.0, -1.0,
+
+            // Bottom face
+            -1.0, -1.0, -1.0,
+             1.0, -1.0, -1.0,
+             1.0, -1.0,  1.0,
+            -1.0, -1.0,  1.0,
+
+            // Right face
+             1.0, -1.0, -1.0,
+             1.0,  1.0, -1.0,
+             1.0,  1.0,  1.0,
+             1.0, -1.0,  1.0,
+
+            // Left face
+            -1.0, -1.0, -1.0,
+            -1.0, -1.0,  1.0,
+            -1.0,  1.0,  1.0,
+            -1.0,  1.0, -1.0,
+        ];
+        buildingArrayBuffer.itemSize = 3
+        buildingArrayBuffer.numItems = 24
+        gl.bindBuffer(gl.ARRAY_BUFFER, buildingArrayBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(building_vertices), gl.STATIC_DRAW);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, buildingArrayBuffer.itemSize, gl.FLOAT, false, 0, 0);
+        
+        var building_vertex_indices = [
+            0, 1, 2,      0, 2, 3,    // Front face
+            4, 5, 6,      4, 6, 7,    // Back face
+            8, 9, 10,     8, 10, 11,  // Top face
+            12, 13, 14,   12, 14, 15, // Bottom face
+            16, 17, 18,   16, 18, 19, // Right face
+            20, 21, 22,   20, 22, 23  // Left face
+        ];
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buildingIndexBuffer)
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(building_vertex_indices), gl.STATIC_DRAW)
+        buildingIndexBuffer.itemSize = 1
+        buildingIndexBuffer.numItems = 36
+        
+        var textureCoords = [
+          // Front face
+          0.0, 0.0,
+          1.0, 0.0,
+          1.0, 1.0,
+          0.0, 1.0,
+
+          // Back face
+          1.0, 0.0,
+          1.0, 1.0,
+          0.0, 1.0,
+          0.0, 0.0,
+
+          // Top face
+          0.0, 1.0,
+          0.0, 0.0,
+          1.0, 0.0,
+          1.0, 1.0,
+
+          // Bottom face
+          1.0, 1.0,
+          0.0, 1.0,
+          0.0, 0.0,
+          1.0, 0.0,
+
+          // Right face
+          1.0, 0.0,
+          1.0, 1.0,
+          0.0, 1.0,
+          0.0, 0.0,
+
+          // Left face
+          0.0, 0.0,
+          1.0, 0.0,
+          1.0, 1.0,
+          0.0, 1.0,
+        ];
+        gl.bindBuffer(gl.ARRAY_BUFFER, buildingTexCoordBuffer)
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoords), gl.STATIC_DRAW);
+        buildingTexCoordBuffer.itemSize = 2;
+        buildingTexCoordBuffer.numItems = 24;
+    }
+    
+    var buildingTexture;
+    function initBuildingTexture() {
+    	buildingTexture = gl.createTexture()
+    	buildingTexture.image = new Image()
+    	buildingTexture.image.onload = function() {
+    		handleLoadedTexture(buildingTexture)
+    	}
+    	buildingTexture.image.src = "building_texture.jpg"
+    }
+    
+    function handleLoadedTexture(texture) {
+    	gl.bindTexture(gl.TEXTURE_2D, texture);
+    	gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true); // flip due to differences in coordinate system of images and OpenGL
+	    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.image);
+	    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+	    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+	    gl.bindTexture(gl.TEXTURE_2D, null); // we're done manipulating this texture
     }
 
     
