@@ -81,8 +81,15 @@
     					gl.bindBuffer(gl.ARRAY_BUFFER, buildingArrayBuffer);
     					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, buildingArrayBuffer.itemSize, gl.FLOAT, false, 0, 0);
     					
+    					gl.bindBuffer(gl.ARRAY_BUFFER, buildingTexCoordBuffer);
+    					gl.vertexAttribPointer(shaderProgram.texCoordAttribute, buildingTexCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+    					gl.activeTexture(gl.TEXTURE0);
+    					gl.bindTexture(gl.TEXTURE_2D, buildingTexture);
+    					gl.uniform1i(gl.getUniformLocation(shaderProgram, "uSampler"), 0);
+    					
     					gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buildingIndexBuffer);
     					setMatrixUniforms();
+    					
     					gl.drawElements(gl.TRIANGLE_STRIP, buildingIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
     					popMVMatrix();
     		}
@@ -198,10 +205,10 @@
     function initBuildingTexture() {
     	buildingTexture = gl.createTexture()
     	buildingTexture.image = new Image()
+    	buildingTexture.image.src = "building_texture.jpg"
     	buildingTexture.image.onload = function() {
     		handleLoadedTexture(buildingTexture)
     	}
-    	buildingTexture.image.src = "building_texture.jpg"
     }
     
     function handleLoadedTexture(texture) {
@@ -268,6 +275,7 @@
         initGL(canvas);
         initShaders();
         initBuffers();
+        initBuildingTexture();
 
         gl.clearColor(1.0, 1.0, 1.0, 1.0);
         gl.enable(gl.DEPTH_TEST);

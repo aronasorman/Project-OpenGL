@@ -67,7 +67,9 @@
         gl.useProgram(shaderProgram);
 
         shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+        shaderProgram.texCoordAttribute = gl.getAttribLocation(shaderProgram, "aTexCoord");
         gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+        gl.enableVertexAttribArray(shaderProgram.texCoordAttribute);
 
         shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
         shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
