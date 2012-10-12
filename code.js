@@ -215,8 +215,8 @@
     	gl.bindTexture(gl.TEXTURE_2D, texture);
     	gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true); // flip due to differences in coordinate system of images and OpenGL
 	    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.image);
-	    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-	    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+	    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+	    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 	    gl.bindTexture(gl.TEXTURE_2D, null); // we're done manipulating this texture
     }
 
@@ -247,6 +247,9 @@
     }
    
    	var block;
+   	var cameraPosition = [4, 0, 0];
+   	var cameraFacing = [0, 0, 1];
+   	var cameraUp = [0, 1, 0];
     function drawScene(angle) {
         gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -254,8 +257,8 @@
         mat4.ortho(xMin, xMax, yMin, yMax, zMin, zMax, pMatrix);
         //mat4.frustum(xMin, xMax, yMin, yMax * 2, 0.5, 100, pMatrix);
         mat4.identity(viewMatrix);
-        //mat4.lookAt([ Math.cos(deg2rad(angle)), Math.cos(deg2rad(angle)) , Math.cos(deg2rad(angle))], [0, 3, 1], [0, 1, 0], viewMatrix);
         mat4.identity(mvMatrix);
+        mat4.lookAt(cameraPosition, cameraFacing, cameraUp, viewMatrix);
 		
 		
         block = block || blockNode(10, 10, 50);
@@ -264,10 +267,60 @@
     }
     
     var angle = 0;
+    var keys = []
     function render() {
     	requestAnimFrame(render);
+    	handleKeys();
     	drawScene(angle);
     	angle += 1;
+    	clearKeys();
+    }
+    
+    function clearKeys() {
+    	keys = []
+    }
+    
+    function handleKeys() {
+    	var cameraChange = 0.8;
+    	for (i = 0; i < keys.length; i++) {
+    		switch(keys[i]) {
+    			// handle the camera rotation functions first
+    			case 37: // left arrow, rotate camera to left
+    				break;
+    			case 38: // up arrow, move camera up
+    				break;
+    			case 39: // right arrow, rotate camera to right
+    				break;
+    			case 40: // down arrow, rotate to right
+    				break;
+    				
+    			// WASD keys, for moving the position of the camera
+    			case 87: // W, move camera closer to object
+    				cameraPosition[2] -= cameraChange;
+    				break;
+    			case 65: // A, move camera left
+    				cameraPosition[0] -= cameraChange;
+    				break;
+    			case 83: // S, move camera backward
+    				cameraPosition[2] += cameraChange;
+    				break;
+    			case 68: // D, move camera right
+    				cameraPosition[0] += cameraChange;
+    				break;
+    			
+    			// P L for moving camera up and down
+    			case 76: // L, move camera down
+    				cameraPosition[1] -= cameraChange;
+    				break;
+    			case 80: // P, move camera up
+    				cameraPosition[1] += cameraChange;
+    				break;
+    		}
+    	}
+    }
+    
+    function handleKeyDown(event) {
+    	keys.push(event.keyCode);
     }
 
     function webGLStart() {
@@ -279,6 +332,8 @@
 
         gl.clearColor(1.0, 1.0, 1.0, 1.0);
         gl.enable(gl.DEPTH_TEST);
+        
+        document.onkeydown = handleKeyDown;
 		
 		render();
     }
