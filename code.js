@@ -62,7 +62,7 @@
     	// same for width
     	var building_width = width;
     	for (i =  -(length / 2); i < length  / 2; i += building_length) {
-    		var building = buildingNode(building_length, building_width, Math.random() * BUILDING_MAX_HEIGHT);
+    		var building = buildingNode(Math.random() * building_length, building_width, Math.random() * BUILDING_MAX_HEIGHT);
     		translate(building.mMatrix, i, 0, 0);
     		node.children.push(building)
     	}
@@ -261,7 +261,7 @@
         mat4.lookAt(cameraPosition, cameraFacing, cameraUp, viewMatrix);
 		
 		
-        block = block || blockNode(10, 10, 50);
+        block = block || blockNode(70, 10, 50);
         block.draw();
         
     }
