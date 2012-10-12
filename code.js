@@ -270,7 +270,7 @@
         gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix);
         gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
         gl.uniformMatrix4fv(shaderProgram.viewMatrixUniform, false, viewMatrix);
-        var blinkValue = Math.abs(Math.cos(deg2rad(angle)))
+        var blinkValue = Math.round(Math.abs(Math.cos(deg2rad(angle))));
         // gl.uniform1i(gl.getUniformLocation(shaderProgram, "uSampler"), 0);
         gl.uniform1f(shaderProgram.blinkGradientUniform, blinkValue);
     }
