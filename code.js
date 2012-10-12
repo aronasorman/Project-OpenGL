@@ -55,7 +55,7 @@
     // it's the height of the building that will be randomized, 
     function blockNode(length, width) {
     	var node = nodeBoilerplate()
-    	var NUM_BUILDINGS = 6
+    	var NUM_BUILDINGS = 4
     	var BUILDING_MAX_HEIGHT = 100
     	// for now, divide the length and width equally among all buildings
     	var building_length = length / NUM_BUILDINGS;
