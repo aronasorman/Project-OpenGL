@@ -12,6 +12,8 @@
     var yMax = 100.0;
     var zMin = -100.0;
     var zMax = 100.0;
+    var angle = 0.0;
+
     
     function deg2rad(deg) {
     	return deg * (Math.PI/180);
@@ -49,6 +51,49 @@
     	return node
     }
     
+    // a city is a collection of blocks
+    function cityNode(numBlocks) {
+    	var node = nodeBoilerplate();
+    	/* The shit below causes my laptop to lag
+    	var blockWidth = (zMax - zMin) / Math.sqrt(numBlocks);
+    	var blockLength = (xMax - xMin) / Math.sqrt(numBlocks);
+    	alert(blockWidth);
+    	debugger
+    	
+    	for(x = xMin; x <= xMax; x += blockLength) {
+    		for (z = zMin; z <= zMax; z += blockWidth) {
+    			var block = blockNode(blockLength, blockWidth);
+    			translate(block.mMatrix, x, 0, z);
+    			node.children.push(block);
+    		}
+    	}
+    	return node
+    	*/
+    	
+    	var blocksPerRow = 3;
+    	var blockWidth = 20;
+    	var blockLength = 20;
+    	var spacing = 20;
+    	
+    
+    	var block = blockNode(blockLength, blockWidth);
+    	translate(block.mMatrix,blockLength * 2 + spacing, 0, blockWidth * 2 + spacing);
+    	node.children.push(block);
+    
+    	
+    	var block2 = blockNode(blockLength, blockWidth);
+    	node.children.push(block2);
+    	
+    	var block2 = blockNode(blockLength, blockWidth);
+    	translate(block2.mMatrix,-blockLength * 2 + spacing, 0, -blockWidth * 2 + spacing);
+    	node.children.push(block2);
+    	
+    	
+    	// make the whole city small
+    	mat4.scale(node.mMatrix, [0.5, 1, 1]);
+    	return node
+    }
+    
     // a block is a collection of buildings
     // V1: the generation of buildins is random, they just follow the total area
     // specified as parameters of this function. Actually for this version
@@ -72,7 +117,7 @@
     
     function buildingNode(length, width, height) {
     	var node = nodeBoilerplate()
-    	node.draw = function() {
+    	node.draw = function(blinkVal) {
     					pushMVMatrix();
     					mat4.multiply(mvMatrix, this.mMatrix, mvMatrix);
     					mat4.scale(mvMatrix, [width, height, length])
@@ -225,6 +270,9 @@
         gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix);
         gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
         gl.uniformMatrix4fv(shaderProgram.viewMatrixUniform, false, viewMatrix);
+        var blinkValue = Math.abs(Math.cos(deg2rad(angle)))
+        // gl.uniform1i(gl.getUniformLocation(shaderProgram, "uSampler"), 0);
+        gl.uniform1f(shaderProgram.blinkGradientUniform, blinkValue);
     }
     
     function perspective(l, r, t, b, n, f, d) { // follow the call type of mat4.perspective
@@ -247,10 +295,11 @@
     }
    
    	var block;
+   	var node;
    	var cameraPosition = [4, 0, 0];
    	var cameraFacing = [0, 0, 1];
    	var cameraUp = [0, 1, 0];
-    function drawScene(angle) {
+    function drawScene(blinkVal) {
         gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -261,19 +310,25 @@
         mat4.lookAt(cameraPosition, cameraFacing, cameraUp, viewMatrix);
 		
 		
-        block = block || blockNode(70, 10, 50);
-        block.draw();
+        //block = block || blockNode(70, 10);
+        //block.draw();
+        
+        //node = node || cityNode(9);
+        //setMatrixUniforms();
+        
+        node = node || blockNode(75, 10);
+        node.draw();
         
     }
     
-    var angle = 0;
     var keys = []
     function render() {
     	requestAnimFrame(render);
     	handleKeys();
     	drawScene(angle);
+    	clearKeys();    	
     	angle += 1;
-    	clearKeys();
+
     }
     
     function clearKeys() {
@@ -286,8 +341,10 @@
     		switch(keys[i]) {
     			// handle the camera rotation functions first
     			case 37: // left arrow, rotate camera to left
+    				cameraFacing[0] -= cameraChange;
     				break;
-    			case 38: // up arrow, move camera up
+    			case 38: // up arrow, rotate camera up
+    				cameraFacing[0] += cameraChange;
     				break;
     			case 39: // right arrow, rotate camera to right
     				break;
